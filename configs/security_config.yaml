@@ -1,0 +1,31 @@
+# IoMT Security Configuration
+# Zero-Trust Architecture Settings
+
+encryption:
+  data_in_transit: TLS_1_3
+  data_at_rest: AES_256
+  key_rotation_days: 30
+  certificate_pinning: true
+
+authentication:
+  method: mTLS_plus_JWT
+  jwt_expiry_minutes: 60
+  device_cert_validity_days: 365
+  mfa_required: true
+
+network:
+  zero_trust: true
+  device_vlan_isolated: true
+  allowed_device_ports: [8883, 443]
+  ids_ips_enabled: true
+
+audit:
+  log_all_phi_access: true
+  log_retention_days: 365
+  alert_on_anomalous_access: true
+
+compliance:
+  hipaa: true
+  gdpr: true
+  fda_cybersecurity_2023: true
+  sbom_required: true

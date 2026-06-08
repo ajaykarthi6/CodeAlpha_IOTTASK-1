@@ -1,0 +1,81 @@
+# IoMT Device Registry & Configuration
+# -------------------------------------------
+# Defines all registered IoMT devices, their
+# communication parameters, and alert thresholds.
+
+devices:
+
+  cgm_freestyle_libre:
+    device_type: CGM
+    manufacturer: Abbott
+    model: FreeStyle Libre 3
+    connectivity: BLE
+    sample_interval_seconds: 60
+    data_retention_days: 90
+    alert_thresholds:
+      critical_low_mg_dl: 54
+      low_mg_dl: 70
+      high_mg_dl: 180
+      critical_high_mg_dl: 300
+      rapid_change_rate_per_min: 3.0
+
+  ecg_patch_zio:
+    device_type: ECG_PATCH
+    manufacturer: iRhythm
+    model: Zio XT
+    connectivity: BLE
+    sample_rate_hz: 128
+    wear_duration_days: 14
+    alert_thresholds:
+      bradycardia_bpm: 60
+      tachycardia_bpm: 100
+      pause_seconds: 3.0
+      afib_detection: true
+
+  pacemaker_medtronic:
+    device_type: PACEMAKER_CRT
+    manufacturer: Medtronic
+    model: Azure XT CRT-D
+    connectivity: MICS_RF
+    transmission_schedule: nightly_02:00
+    alert_thresholds:
+      impedance_warning_ohms: 55
+      impedance_critical_ohms: 45
+      hf_risk_notify: HIGH
+
+  ambient_home_kit:
+    device_type: AMBIENT_AAL
+    manufacturer: IoMT Research
+    model: HomeGuard v2
+    connectivity: Zigbee
+    sensors:
+      - pir_motion
+      - door_contact
+      - bed_pressure
+      - medication_dispenser
+      - water_flow
+    alert_thresholds:
+      fridge_no_open_hours: 24
+      bathroom_duration_minutes: 20
+      bed_duration_hours: 14
+      medication_missed_days: 1
+
+mqtt:
+  broker_host: iomt-broker.hospital.local
+  broker_port: 8883
+  use_tls: true
+  qos_level: 2
+  topic_prefix: "iomt/HOSP001"
+  keepalive_seconds: 60
+
+api:
+  base_url: http://localhost:8000
+  version: v1
+  rate_limit_per_minute: 1000
+  auth_method: JWT
+
+edge_computing:
+  enabled: true
+  local_buffer_hours: 24
+  anomaly_detection_on_device: true
+  compress_before_transmit: true

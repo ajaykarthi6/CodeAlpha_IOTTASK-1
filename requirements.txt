@@ -1,0 +1,37 @@
+# IoMT Research Hub — Python Dependencies
+
+# Web Framework
+fastapi>=0.104.0
+uvicorn[standard]>=0.24.0
+
+# Data & Science
+numpy>=1.24.0
+pandas>=2.0.0
+scipy>=1.11.0
+
+# MQTT Client
+paho-mqtt>=1.6.1
+
+# Data Validation
+pydantic>=2.4.0
+
+# Visualization
+matplotlib>=3.7.0
+plotly>=5.17.0
+
+# Security / Encryption
+cryptography>=41.0.0
+
+# YAML config
+pyyaml>=6.0.1
+
+# Testing
+pytest>=7.4.0
+pytest-asyncio>=0.21.0
+httpx>=0.25.0
+
+# HL7 FHIR
+fhir.resources>=7.0.0
+
+# Async support
+asyncio-mqtt>=0.16.0

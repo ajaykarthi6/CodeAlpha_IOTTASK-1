@@ -1,0 +1,257 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>IoMT Patient Dashboard</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Segoe UI', sans-serif; background: #0a0f1e; color: #e0e8f0; min-height: 100vh; }
+  header { background: #0d1b2a; padding: 16px 24px; display: flex; align-items: center; justify-content: space-between; border-bottom: 1px solid #1e3a5f; }
+  header h1 { font-size: 1.2rem; color: #4fc3f7; letter-spacing: 1px; }
+  .patient-badge { background: #1e3a5f; padding: 6px 14px; border-radius: 20px; font-size: 0.8rem; color: #81d4fa; }
+  .status-bar { background: #0d2137; padding: 8px 24px; display: flex; gap: 20px; font-size: 0.75rem; color: #546e7a; border-bottom: 1px solid #1e3a5f; }
+  .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; background: #4caf50; margin-right: 6px; animation: pulse 2s infinite; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:0.4} }
+  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; padding: 20px 24px; }
+  .card { background: #0d1b2a; border: 1px solid #1e3a5f; border-radius: 12px; padding: 18px; position: relative; overflow: hidden; transition: border-color 0.3s; }
+  .card:hover { border-color: #4fc3f7; }
+  .card-label { font-size: 0.7rem; color: #546e7a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 8px; }
+  .card-value { font-size: 2.2rem; font-weight: 700; line-height: 1; }
+  .card-unit { font-size: 0.85rem; color: #78909c; margin-left: 4px; }
+  .card-sub { font-size: 0.75rem; color: #78909c; margin-top: 6px; }
+  .card-trend { position: absolute; top: 16px; right: 16px; font-size: 1.4rem; }
+  .normal { color: #4caf50; }
+  .warning { color: #ff9800; }
+  .critical { color: #f44336; }
+  .alert-banner { margin: 0 24px 16px; padding: 12px 18px; border-radius: 8px; font-size: 0.85rem; display: flex; align-items: center; gap: 10px; }
+  .alert-critical { background: rgba(244,67,54,0.12); border: 1px solid rgba(244,67,54,0.4); color: #ef9a9a; }
+  .alert-warning { background: rgba(255,152,0,0.1); border: 1px solid rgba(255,152,0,0.35); color: #ffcc80; }
+  .chart-section { padding: 0 24px 24px; }
+  .chart-card { background: #0d1b2a; border: 1px solid #1e3a5f; border-radius: 12px; padding: 18px; }
+  .chart-title { font-size: 0.75rem; color: #546e7a; text-transform: uppercase; letter-spacing: 1px; margin-bottom: 14px; }
+  canvas { width: 100% !important; }
+  .device-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 12px; padding: 0 24px 24px; }
+  .device-card { background: #0d1b2a; border: 1px solid #1e3a5f; border-radius: 10px; padding: 14px; font-size: 0.8rem; }
+  .device-name { color: #4fc3f7; font-weight: 600; margin-bottom: 6px; }
+  .device-stat { color: #78909c; display: flex; justify-content: space-between; margin-top: 4px; }
+  .section-title { padding: 8px 24px 12px; font-size: 0.8rem; color: #4fc3f7; text-transform: uppercase; letter-spacing: 1px; }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>🏥 IoMT Patient Monitor</h1>
+  <span class="patient-badge">PT-20240001 · John Doe · DOB: 1965-03-14</span>
+</header>
+<div class="status-bar">
+  <span><span class="status-dot"></span>LIVE FEED</span>
+  <span>Last update: <span id="timestamp">--</span></span>
+  <span>Devices online: 4/4</span>
+  <span>Monitoring since: 08:00 AM</span>
+</div>
+
+<!-- Alert Banners -->
+<div id="alerts-container"></div>
+
+<!-- Vitals Grid -->
+<div class="grid">
+  <div class="card">
+    <div class="card-label">Blood Glucose</div>
+    <div class="card-value normal" id="glucose">--</div><span class="card-unit">mg/dL</span>
+    <div class="card-sub" id="glucose-trend">CGM · Every 1 min</div>
+    <div class="card-trend" id="glucose-arrow">→</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Heart Rate</div>
+    <div class="card-value normal" id="hr">--</div><span class="card-unit">bpm</span>
+    <div class="card-sub">ECG Patch · 250 Hz</div>
+    <div class="card-trend">♥</div>
+  </div>
+  <div class="card">
+    <div class="card-label">SpO₂</div>
+    <div class="card-value normal" id="spo2">--</div><span class="card-unit">%</span>
+    <div class="card-sub">Pulse Oximeter · Continuous</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Blood Pressure</div>
+    <div class="card-value normal" id="bp">--</div><span class="card-unit">mmHg</span>
+    <div class="card-sub">Smart Cuff · Every 15 min</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Temperature</div>
+    <div class="card-value normal" id="temp">--</div><span class="card-unit">°C</span>
+    <div class="card-sub">Skin sensor · Continuous</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Respiratory Rate</div>
+    <div class="card-value normal" id="rr">--</div><span class="card-unit">br/min</span>
+    <div class="card-sub">Chest band · Continuous</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Cardiac Rhythm</div>
+    <div class="card-value" id="rhythm" style="font-size:1rem;color:#4fc3f7;padding-top:10px">--</div>
+    <div class="card-sub">ECG Patch analysis</div>
+  </div>
+  <div class="card">
+    <div class="card-label">Activity Score</div>
+    <div class="card-value normal" id="activity">--</div><span class="card-unit">/100</span>
+    <div class="card-sub">Ambient + wearable sensors</div>
+  </div>
+</div>
+
+<!-- Glucose Chart -->
+<div class="section-title">📈 Glucose Trend (Last 30 readings)</div>
+<div class="chart-section">
+  <div class="chart-card">
+    <div class="chart-title">Continuous Glucose Monitor — Real-Time</div>
+    <canvas id="glucoseChart" height="90"></canvas>
+  </div>
+</div>
+
+<!-- Devices -->
+<div class="section-title">🔌 Connected Devices</div>
+<div class="device-grid">
+  <div class="device-card">
+    <div class="device-name">FreeStyle Libre 3</div>
+    <div class="device-stat"><span>Type</span><span>CGM</span></div>
+    <div class="device-stat"><span>Battery</span><span id="bat-cgm">--</span></div>
+    <div class="device-stat"><span>Signal</span><span style="color:#4caf50">●  BLE</span></div>
+  </div>
+  <div class="device-card">
+    <div class="device-name">iRhythm Zio XT</div>
+    <div class="device-stat"><span>Type</span><span>ECG Patch</span></div>
+    <div class="device-stat"><span>Battery</span><span id="bat-ecg">--</span></div>
+    <div class="device-stat"><span>Signal</span><span style="color:#4caf50">●  BLE</span></div>
+  </div>
+  <div class="device-card">
+    <div class="device-name">Biobeat Patch</div>
+    <div class="device-stat"><span>Type</span><span>Multi-vital</span></div>
+    <div class="device-stat"><span>Battery</span><span id="bat-bb">--</span></div>
+    <div class="device-stat"><span>Signal</span><span style="color:#4caf50">●  WiFi</span></div>
+  </div>
+  <div class="device-card">
+    <div class="device-name">Smart Bed Sensor</div>
+    <div class="device-stat"><span>Type</span><span>Pressure Array</span></div>
+    <div class="device-stat"><span>Status</span><span style="color:#4caf50">● Active</span></div>
+    <div class="device-stat"><span>Signal</span><span style="color:#4caf50">●  Zigbee</span></div>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script>
+  // Glucose chart
+  const glucoseData = Array.from({length: 30}, () => Math.round(85 + Math.random() * 30));
+  const labels = Array.from({length: 30}, (_, i) => `-${30-i}m`);
+
+  const ctx = document.getElementById('glucoseChart').getContext('2d');
+  const chart = new Chart(ctx, {
+    type: 'line',
+    data: {
+      labels,
+      datasets: [{
+        label: 'Glucose mg/dL',
+        data: glucoseData,
+        borderColor: '#4fc3f7',
+        backgroundColor: 'rgba(79,195,247,0.08)',
+        fill: true,
+        tension: 0.4,
+        pointRadius: 2,
+        borderWidth: 2,
+      }]
+    },
+    options: {
+      responsive: true,
+      plugins: { legend: { display: false } },
+      scales: {
+        y: {
+          min: 40, max: 280,
+          grid: { color: 'rgba(255,255,255,0.05)' },
+          ticks: { color: '#546e7a' },
+        },
+        x: { grid: { display: false }, ticks: { color: '#546e7a', maxTicksLimit: 8 } }
+      },
+      animation: { duration: 300 }
+    }
+  });
+
+  // Add reference bands (normal range)
+  Chart.register({
+    id: 'glucoseBands',
+    beforeDraw(chart) {
+      const {ctx, scales: {y}} = chart;
+      const yLow = y.getPixelForValue(70);
+      const yHigh = y.getPixelForValue(180);
+      ctx.save();
+      ctx.fillStyle = 'rgba(76,175,80,0.06)';
+      ctx.fillRect(chart.chartArea.left, yHigh, chart.chartArea.width, yLow - yHigh);
+      ctx.restore();
+    }
+  });
+
+  function getColorClass(value, low, high, critLow, critHigh) {
+    if (value <= critLow || value >= critHigh) return 'critical';
+    if (value < low || value > high) return 'warning';
+    return 'normal';
+  }
+
+  function updateDashboard() {
+    const now = new Date();
+    document.getElementById('timestamp').textContent = now.toLocaleTimeString();
+
+    // Simulate vitals
+    const glucose = Math.round(85 + Math.random() * 100);
+    const hr      = Math.round(65 + Math.random() * 30);
+    const spo2    = Math.round(94 + Math.random() * 5);
+    const bpS     = Math.round(110 + Math.random() * 35);
+    const bpD     = Math.round(70 + Math.random() * 20);
+    const temp    = (36.2 + Math.random() * 1.5).toFixed(1);
+    const rr      = Math.round(13 + Math.random() * 8);
+    const activity = Math.round(60 + Math.random() * 35);
+
+    const gEl = document.getElementById('glucose');
+    gEl.textContent = glucose;
+    gEl.className = `card-value ${getColorClass(glucose, 70, 180, 54, 300)}`;
+    document.getElementById('glucose-trend').textContent =
+      glucose < 70 ? '⬇ FALLING — Low alert' : glucose > 180 ? '⬆ RISING — High alert' : '→ Stable · In range';
+
+    const hrEl = document.getElementById('hr');
+    hrEl.textContent = hr;
+    hrEl.className = `card-value ${getColorClass(hr, 60, 100, 40, 150)}`;
+
+    const spo2El = document.getElementById('spo2');
+    spo2El.textContent = spo2;
+    spo2El.className = `card-value ${spo2 < 90 ? 'critical' : spo2 < 95 ? 'warning' : 'normal'}`;
+
+    document.getElementById('bp').textContent = `${bpS}/${bpD}`;
+    document.getElementById('temp').textContent = temp;
+    document.getElementById('rr').textContent = rr;
+    document.getElementById('activity').textContent = activity;
+    document.getElementById('rhythm').textContent = hr > 100 ? '⚡ Tachycardia' : hr < 60 ? '⚡ Bradycardia' : '✓ Normal Sinus Rhythm';
+    document.getElementById('bat-cgm').textContent = `${Math.round(78 + Math.random()*5)}%`;
+    document.getElementById('bat-ecg').textContent = `${Math.round(62 + Math.random()*5)}%`;
+    document.getElementById('bat-bb').textContent = `${Math.round(90 + Math.random()*5)}%`;
+
+    // Update chart
+    glucoseData.push(glucose);
+    glucoseData.shift();
+    chart.data.datasets[0].data = [...glucoseData];
+    chart.update('none');
+
+    // Alerts
+    const alertsContainer = document.getElementById('alerts-container');
+    alertsContainer.innerHTML = '';
+    if (glucose < 70) {
+      alertsContainer.innerHTML += `<div class="alert-banner alert-critical">🚨 <b>CGM ALERT:</b> Blood glucose ${glucose} mg/dL — Hypoglycemia detected. Administer 15g fast-acting glucose immediately.</div>`;
+    } else if (spo2 < 94) {
+      alertsContainer.innerHTML += `<div class="alert-banner alert-critical">🚨 <b>SpO₂ ALERT:</b> Oxygen saturation ${spo2}% — Below safe threshold. Check airway.</div>`;
+    } else if (hr > 100) {
+      alertsContainer.innerHTML += `<div class="alert-banner alert-warning">⚠️ <b>HR ALERT:</b> Heart rate ${hr} bpm — Tachycardia. Assess patient.</div>`;
+    }
+  }
+
+  updateDashboard();
+  setInterval(updateDashboard, 3000);
+</script>
+</body>
+</html>
